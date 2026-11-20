@@ -1,18 +1,16 @@
-print("================================")
-print("       JOGO DE CARTAS P2P")
-print("================================")
+def criar_jogador(nome):
 
-# Identificação do jogador
-nome = input("Digite seu nome: ")
+    jogador = {
+        "nome": nome,
+        "mao": [],
+        "conectado": True
+    }
 
-# Configuração inicial
-jogador = {
-    "nome": nome,
-    "mao": [],
-    "conectado": True
-}
+    return jogador
 
-print("\nJogador cadastrado!")
-print(f"Nome: {jogador['nome']}")
-print(f"Cartas na mão: {len(jogador['mao'])}")
-print(f"Conectado: {jogador['conectado']}")
+
+def mostrar_jogador(jogador):
+
+    print(f"\nNome: {jogador['nome']}")
+    print(f"Cartas na mão: {len(jogador['mao'])}")
+    print(f"Conectado: {jogador['conectado']}")
