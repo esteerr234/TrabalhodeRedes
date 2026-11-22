@@ -3,10 +3,7 @@
 
 def pode_jogar(carta, carta_mesa):
 
-    if carta[0] == "Coringa":
-        return True
-
-    elif carta[0] == carta_mesa[0]:
+    if carta[0] == carta_mesa[0]:
         return True
 
     elif carta[1] == carta_mesa[1]:
@@ -35,22 +32,18 @@ def aplicar_efeito(carta, sentido):
 
     if carta[1] == "+2":
         print("Efeito +2 ativado!")
-        return 2, sentido
-
-    elif carta[1] == "+4":
-        print("Efeito +4 ativado!")
-        return 4, sentido
+        return 2, True, sentido
 
     elif carta[1] == "Pular":
         print("Efeito Pular ativado!")
-        return 1, sentido
+        return 0, True, sentido
 
     elif carta[1] == "Inverter":
         print("Sentido da partida invertido!")
         sentido = sentido * -1
-        return 0, sentido
+        return 0, False, sentido
 
-    return 0, sentido
+    return 0, False, sentido
 
 
 # Calculando o próximo jogador

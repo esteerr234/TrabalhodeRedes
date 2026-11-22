@@ -23,11 +23,6 @@ def criar_baralho():
             for copia in range(2):
                 baralho.append((cor, valor))
 
-    # Adicionando os coringas
-    for copia in range(4):
-        baralho.append(("Coringa", "Mudar Cor"))
-        baralho.append(("Coringa", "+4"))
-
     random.shuffle(baralho)
 
     return baralho

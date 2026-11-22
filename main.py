@@ -33,7 +33,7 @@ else:
     while True:
         carta_inicial = cartas.pop()
 
-        if carta_inicial[0] != "Coringa" and carta_inicial[1] not in ["Pular", "Inverter", "+2"]:
+        if carta_inicial[1] not in ["Pular", "Inverter", "+2"]:
             pilha_descarte.append(carta_inicial)
             break
 
@@ -72,6 +72,8 @@ else:
             jogador["mao"], carta_mesa
         )
 
+        carta_jogada = None
+
         if len(validas) == 0:
             print("\nVocê não possui cartas válidas.")
             print("Comprando uma carta...")
@@ -87,17 +89,21 @@ else:
                 if regras.pode_jogar(nova_carta, carta_mesa):
                     resposta = input(
                         "Deseja jogar a carta? (s/n): "
-                    ).lower()
+                    ).strip().lower()
+
+                    while resposta not in ("s", "n"):
+                        resposta = input(
+                            "Responda com 's' ou 'n': "
+                        ).strip().lower()
 
                     if resposta == "s":
-                        jogador["mao"].remove(nova_carta)
-                        pilha_descarte.append(nova_carta)
-                        print("Carta jogada!")
-
+                        carta_jogada = nova_carta
                     else:
                         print("Você passou a vez.")
                 else:
                     print("Carta não pode ser jogada. Passando a vez.")
+            else:
+                print("Não há cartas disponíveis para comprar. Passando a vez.")
 
         else:
             print("\nCartas que você pode jogar:")
@@ -106,111 +112,78 @@ else:
                 print(carta)
 
             escolha = input(
-                "\nDigite o número da carta que deseja jogar "
-                "ou 0 para comprar: "
+                "\nDigite o número da carta que deseja jogar: "
+            ).strip()
+
+            try:
+                indice = int(escolha) - 1
+
+                if indice < 0 or indice >= len(jogador["mao"]):
+                    print("Número inválido!")
+                    continue
+
+                carta_escolhida = jogador["mao"][indice]
+
+                if regras.pode_jogar(carta_escolhida, carta_mesa):
+                    carta_jogada = carta_escolhida
+                else:
+                    print("Essa carta não pode ser jogada!")
+                    continue
+
+            except ValueError:
+                print("Digite um número válido!")
+                continue
+
+        if carta_jogada is not None:
+            jogador["mao"].remove(carta_jogada)
+            pilha_descarte.append(carta_jogada)
+            print("Carta jogada:", carta_jogada)
+
+            if len(jogador["mao"]) == 0:
+                print("\n", jogador["nome"], "venceu a partida!")
+                partida_ativa = False
+                continue
+
+            cartas_comprar, pular_proximo, sentido = regras.aplicar_efeito(
+                carta_jogada, sentido
             )
 
-            if escolha == "0":
-                nova_carta = baralho.comprar_carta(
-                    cartas, pilha_descarte
-                )
+            proximo_idx = regras.proximo_jogador(
+                jogador_atual,
+                quantidade_jogadores,
+                sentido
+            )
 
-                if nova_carta is not None:
-                    jogador["mao"].append(nova_carta)
-                    print("Carta comprada:", nova_carta)
-
-            else:
-                try:
-                    indice = int(escolha) - 1
-
-                    if indice < 0 or indice >= len(jogador["mao"]):
-                        print("Número inválido!")
-                        continue
-
-                    carta_escolhida = jogador["mao"][indice]
-
-                    if regras.pode_jogar(carta_escolhida, carta_mesa):
-
-                        jogador["mao"].remove(carta_escolhida)
-
-                        if carta_escolhida[1] == "Mudar Cor" or carta_escolhida[1] == "+4":
-                            print("Cores disponíveis:")
-                            print("1 - Vermelho")
-                            print("2 - Amarelo")
-                            print("3 - Verde")
-                            print("4 - Azul")
-
-                            cores = {
-                                "1": "Vermelho",
-                                "2": "Amarelo",
-                                "3": "Verde",
-                                "4": "Azul"
-                            }
-
-                            cor_escolhida = input("Escolha a cor: ")
-
-                            while cor_escolhida not in cores:
-                                cor_escolhida = input("Escolha uma opção válida: ")
-
-                            carta_escolhida = (
-                                cores[cor_escolhida],
-                                carta_escolhida[1]
-                            )
-
-                        pilha_descarte.append(carta_escolhida)
-
-                        print("Carta jogada:", carta_escolhida)
-
-                        efeito, sentido = regras.aplicar_efeito(
-                            carta_escolhida, sentido
-                        )
-
-                        if len(jogador["mao"]) == 0:
-                            print("\n", jogador["nome"], "venceu a partida!")
-                            partida_ativa = False
-                            continue
-
-                        jogador_atual = regras.proximo_jogador(
-                            jogador_atual,
-                            quantidade_jogadores,
-                            sentido
-                        )
-
-                        for i in range(efeito):
-                            proximo = jogadores[jogador_atual]
-                            carta_comprada = baralho.comprar_carta(
-                                cartas, pilha_descarte
-                            )
-
-                            if carta_comprada is not None:
-                                proximo["mao"].append(carta_comprada)
-
-                        jogador_atual = (
-                            jogador_atual + sentido * (1 + efeito)
-                        ) % quantidade_jogadores
-
-                    else:
-                        print("Essa carta não pode ser jogada!")
-                        continue
-
-                except ValueError:
-                    print("Digite um número válido!")
-                    continue
-
-        if partida_ativa:
-            if escolha == "0" if validas else False:
-                pass
-            else:
-                if len(jogador["mao"]) == 0:
-                    print("\n", jogador["nome"], "venceu a partida!")
-                    partida_ativa = False
-                    continue
-
-                if jogador_atual == jogadores.index(jogador):
-                    jogador_atual = regras.proximo_jogador(
-                        jogador_atual,
-                        quantidade_jogadores,
-                        sentido
+            if cartas_comprar > 0:
+                proximo = jogadores[proximo_idx]
+                for _ in range(cartas_comprar):
+                    carta_comprada = baralho.comprar_carta(
+                        cartas, pilha_descarte
                     )
+                    if carta_comprada is not None:
+                        proximo["mao"].append(carta_comprada)
+                print(
+                    f"{proximo['nome']} comprou {cartas_comprar} cartas "
+                    "e perdeu a vez!"
+                )
+            elif pular_proximo:
+                proximo = jogadores[proximo_idx]
+                print(f"{proximo['nome']} perdeu a vez!")
+
+            if pular_proximo:
+                jogador_atual = regras.proximo_jogador(
+                    proximo_idx,
+                    quantidade_jogadores,
+                    sentido
+                )
+            else:
+                jogador_atual = proximo_idx
+
+        else:
+            jogador_atual = regras.proximo_jogador(
+                jogador_atual,
+                quantidade_jogadores,
+                sentido
+            )
 
     print("\nPartida encerrada!")
