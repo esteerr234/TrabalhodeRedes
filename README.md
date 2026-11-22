@@ -1,50 +1,31 @@
-# 🃏 Uno P2P — Jogo de Cartas Distribuído sem Servidor Confiável
+# Uno P2P — Jogo de Cartas Distribuído sem Servidor Confiável
 
-## 🃏 Sobre o Projeto
+## Sobre o Projeto
 
-Este projeto implementa um **jogo de cartas multijogador por turnos em rede** (inspirado no Uno, **Opção 2** do enunciado), projetado em **arquitetura híbrida** com **servidor de lobby** para descoberta de participantes e comunicação **totalmente peer-to-peer (P2P)** durante a partida, sem nenhum servidor central confiável controlando o estado do jogo.
+Este projeto implementa um **jogo de cartas multijogador por turnos em rede** (inspirado no Uno).
 
+Foi projetado utilizando uma **arquitetura híbrida** com **servidor de lobby** para descoberta de participantes e comunicação **totalmente peer-to-peer (P2P)** durante a partida, sem nenhum servidor central confiável controlando o estado do jogo.
+
+[!NOTE]
 Toda a comunicação em rede foi desenvolvida em **Python puro**, utilizando diretamente a API padrão de **sockets TCP**, sem uso de frameworks de rede, bibliotecas de RPC, middlewares de mensageria ou WebSockets.
 
 ---
 
-## 🏛️ Identificação Acadêmica
-
-- **Instituição:** Universidade de Brasília (UnB)
-- **Departamento:** Departamento de Ciência da Computação (CIC)
-- **Disciplina:** Redes de Computadores
-- **Professor:** Prof. Roberto Rodrigues-Filho
-- **Atividade:** Trabalho Prático — Protocolo de Camada de Aplicação (Opção 2: Jogo de Cartas P2P)
-
----
-
-## 👥 Participantes do Projeto
-
-| Nome | Matrícula |
-| :--- | :--- |
-| Iago Batista Gomes de Carvalho | 251039406 |
-| `[Nome do Integrante]` | `[Matrícula]` |
-| `[Nome do Integrante]` | `[Matrícula]` |
-| `[Nome do Integrante]` | `[Matrícula]` |
-| `[Nome do Integrante]` | `[Matrícula]` |
-| `[Nome do Integrante]` | `[Matrícula]` |
-| `[Nome do Integrante]` | `[Matrícula]` |
-| `[Nome do Integrante]` | `[Matrícula]` |
-
----
-
-## 🎯 Requisitos Atendidos e Arquitetura
+## Requisitos Atendidos e Arquitetura
 
 ### Arquitetura Híbrida (Lobby + Full Mesh P2P)
 
 O sistema separa claramente as fases de **descoberta** e de **execução da partida**:
 
-1. **Servidor de Lobby (`servidor_lobby.py`):**
+#### 1. Servidor de Lobby (`servidor_lobby.py`):
+
    - Registra jogadores (nome único, IP e porta TCP onde cada par escuta conexões P2P).
    - Permite listar, criar, entrar e sair de salas (de **3 a 4 jogadores**).
    - Quando o criador inicia a sala (`INICIAR_PARTIDA`), o lobby envia a todos os membros a notificação `PARTIDA_INICIADA` contendo `id_partida`, uma `chave_partida` aleatória (16 bytes em hex) e a lista ordenada de pares (`id_jogador`, `nome`, `host`, `porta`), **removendo a partida do lobby em seguida**.
    - O lobby não embaralha, não valida jogadas e não guarda estado da partida. Por isso, **a queda ou o encerramento do servidor de lobby não interrompe partidas já em andamento**.
-2. **Malha Completa P2P (`rede_p2p.py`):**
+
+#### 2. Malha Completa P2P (`rede_p2p.py`):
+
    - Cada jogador abre seu socket servidor TCP local **antes** de se registrar no lobby.
    - Ao receber `PARTIDA_INICIADA`, os pares formam uma malha completa (*Full Mesh*): todos conectados diretamente a todos.
    - **Regra determinística anti-duplicação:** para evitar conexões simultâneas duplicadas, o par com `id_jogador` **maior** inicia a conexão TCP para os pares com `id_jogador` **menor** e envia o handshake `OLA`; os pares menores aceitam a conexão, validam `id_partida` e `chave_partida`, e respondem `OLA_OK` (ou `ERRO` com `CHAVE_INVALIDA` e fecham o socket).
@@ -77,7 +58,7 @@ Nenhum par consegue escolher ou prever a ordem do baralho isoladamente. O protoc
 
 ---
 
-## 📜 Regras do Jogo Implementadas
+## Regras do Jogo Implementadas
 
 1. **Baralho (104 cartas):** 4 cores (`Vermelho`, `Amarelo`, `Verde`, `Azul`) × 13 valores (`0` a `9`, `Pular`, `Inverter`, `+2`) × 2 cópias cada. **Não existem cartas Coringa, Mudar Cor ou +4.**
 2. **Início:** cada jogador recebe **7 cartas**; uma carta numérica é virada para iniciar a pilha de descarte e as demais formam o monte de compra.
@@ -92,7 +73,7 @@ Nenhum par consegue escolher ou prever a ordem do baralho isoladamente. O protoc
 
 ---
 
-## 🛠️ Tecnologias e Restrições
+## Tecnologias e Restrições
 
 - **Linguagem:** Python 3 (testado em Python 3.10+, compatível com Python 3.8+)
 - **Bibliotecas utilizadas (apenas biblioteca padrão do Python):**
@@ -106,7 +87,7 @@ Nenhum par consegue escolher ou prever a ordem do baralho isoladamente. O protoc
 
 ---
 
-## 📁 Estrutura do Projeto
+## Estrutura do Projeto
 
 ```text
 TrabalhodeRedes/
@@ -214,38 +195,69 @@ Opções disponíveis em `main.py`:
 
 ---
 
-## 🧪 Como Testar e Cenários de Demonstração
+## Como Testar e Cenários de Demonstração
 
-### Verificação Rápida da CLI e das Regras
+### Testes Automatizados
 
-Atualmente não há um script de testes automatizados versionado no repositório. Você pode verificar rapidamente a interface CLI e as invariantes básicas do baralho/regras diretamente pelo terminal:
+Os testes estão na pasta `tests/` e utilizam apenas `unittest`, incluído na biblioteca padrão do Python. **O projeto e os testes não utilizam frameworks ou bibliotecas externas e não possuem dependências adicionais ao Python.** Não é necessário instalar pacotes com `pip`.
+
+Na raiz do projeto, execute:
 
 ```bash
-python3 servidor_lobby.py --help
-python3 main.py --help
-python3 -c "import baralho, regras; d = baralho.criar_baralho_canonico(); assert len(d) == 104; assert all(c != 'Coringa' for c, _ in d); assert regras.aplicar_efeito(('Azul', '+2'), 1) == (2, True, 1); print('Verificação básica OK!')"
+python3 -m unittest discover -s tests -v
 ```
 
-### Roteiro de Validação Manual dos 3 Cenários Exigidos no Relatório
+Os testes iniciam o lobby e os jogadores automaticamente, usando conexões locais. Ao final, `OK` indica que todos passaram. A suíte verifica as regras, a comunicação e os três cenários principais:
 
-Para demonstrar e registrar os cenários obrigatórios na entrega final:
+- **Partida completa:** jogadores automáticos jogam até o fim, e todos devem chegar ao mesmo estado e vencedor.
+- **Desconexão de jogador:** verifica a saída voluntária e a perda de conexão, o avanço do turno e a vitória do último jogador restante.
+- **Queda do lobby:** encerra o servidor durante uma partida e verifica que os jogadores continuam até o fim pela rede P2P.
+
+### Roteiro de Validação Manual ede no mínimo três cenários
+
+Para demonstrar os cenários nos terminais, siga as instruções de execução acima e realize os testes abaixo.
 
 #### Cenário 1 — Partida Completa
-1. Inicie `servidor_lobby.py` no Terminal 1 e 3 (ou 4) jogadores com `main.py` nos Terminais 2–4 (ou 2–5).
-2. No Terminal 2 (Ana), escolha `2` para criar uma partida. Nos demais terminais, escolha `1` para listar e `3` para entrar na sala criada.
-3. No Terminal 2 (Ana), digite `iniciar`.
-4. **Resultado esperado:** todos os terminais conectam-se diretamente em malha P2P, executam o *Commit-Reveal* inicial, exibem a mesma carta inicial da mesa e a mesma ordem de turnos, validam jogadas e efeitos (`Pular`, `Inverter`, `+2`, compra pela Regra 4 e reciclagem se o monte acabar) até que um jogador esvazie a mão e todos exibam o mesmo vencedor.
+
+1. Inicie `servidor_lobby.py` em um terminal e 3 ou 4 jogadores com `main.py` em terminais separados.
+2. Com um jogador, escolha `2` para criar uma sala. Com os demais, escolha `1` para listar e `3` para entrar na sala criada.
+3. No terminal do criador, digite `iniciar` e jogue até alguém ficar sem cartas.
+4. **Resultado esperado:** todos exibem a mesma carta inicial e ordem de turnos, respeitam as regras de compra e os efeitos das cartas e anunciam o mesmo vencedor. Se o monte acabar, o descarte é reciclado, preservando a carta da mesa.
 
 #### Cenário 2 — Desconexão de um Jogador Durante a Partida
-1. Com uma partida de 3 ou 4 jogadores em andamento, encerre um dos jogadores pressionando `Ctrl+C` (saída limpa com `TCHAU`) ou fechando abruptamente o terminal/matando o processo (`kill -9 <PID>`).
-2. **Resultado esperado:**
-   - Os demais pares detectam a queda (imediatamente no fechamento de socket ou via timeout de heartbeat `PING`/`PONG`).
-   - Todos exibem a remoção do jogador e o descarte de suas cartas fora do jogo.
-   - Se fosse a vez do jogador removido, o turno avança automaticamente para o próximo jogador ativo sem travar a partida.
-   - Se mais jogadores saírem até restar apenas **1 jogador ativo**, a partida é encerrada imediatamente declarando o sobrevivente como vencedor.
+
+1. Durante uma partida, encerre um jogador com `Ctrl+C` para testar a saída voluntária. Em outra partida, encerre o processo abruptamente (`kill -9 <PID>`) para testar a perda de conexão.
+2. Continue jogando com os participantes restantes. Repita a saída até restar apenas um jogador.
+3. **Resultado esperado:** os demais detectam a saída e removem o jogador e suas cartas. Se era a vez dele, o turno avança para o próximo participante no sentido atual. O último jogador restante é declarado vencedor.
 
 #### Cenário 3 — Falha do Servidor de Lobby com Partida em Andamento
-1. Inicie uma partida normal com 3 ou 4 jogadores e aguarde o término do embaralhamento inicial (início do primeiro turno).
-2. No Terminal 1 (`servidor_lobby.py`), pressione `Ctrl+C` para derrubar completamente o servidor de lobby.
-3. Continue jogando nos terminais dos jogadores.
-4. **Resultado esperado:** a partida continua normalmente sem nenhuma interrupção — jogadas, compras, efeitos especiais e até novas reciclagens via *Commit-Reveal* funcionam integralmente entre os pares até a declaração do vencedor. Somente após o término da partida o cliente informa que o lobby está offline ao sair do loop do jogo.
+
+1. Inicie uma partida com 3 ou 4 jogadores e aguarde o primeiro turno.
+2. No terminal do servidor de lobby, pressione `Ctrl+C` para encerrá-lo.
+3. Continue jogando até o fim.
+4. **Resultado esperado:** a partida continua entre os jogadores, incluindo compras, efeitos especiais e reciclagem do descarte, até todos anunciarem o mesmo vencedor. Após a partida, o cliente informa que o lobby está desconectado.
+
+---
+
+## Identificação Acadêmica
+
+- **Instituição:** Universidade de Brasília (UnB)
+- **Departamento:** Departamento de Ciência da Computação (CIC)
+- **Disciplina:** Redes de Computadores
+- **Professor:** Prof. Roberto Rodrigues-Filho
+- **Atividade:** Trabalho Final - Jogo de cartas P2P sem servidor confiável (inspirado no Uno)
+
+---
+
+## Participantes do Projeto
+
+| Nome | Matrícula |
+| :--- | :--- |
+| Iago Batista Gomes de Carvalho | 251039406 |
+| Ester Andrade Sousa | 242012109 |
+| Érica Tawany Neres dos Anjos | 241020788 |
+| Pedro Augusto da Silva Cirqueira | 231021351 |
+| Cecília Teixeira Paranhos | 242027415 |
+| Jussara Barbosa Santiago | 242012056 |
+| Rafael Henrique Calado de Oliviera | 242035631 |
+| `[Nome do Integrante]` | `[Matrícula]` |
