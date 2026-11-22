@@ -6,8 +6,8 @@ Este projeto implementa um **jogo de cartas multijogador por turnos em rede** (i
 
 Foi projetado utilizando uma **arquitetura híbrida** com **servidor de lobby** para descoberta de participantes e comunicação **totalmente peer-to-peer (P2P)** durante a partida, sem nenhum servidor central confiável controlando o estado do jogo.
 
-[!NOTE]
-Toda a comunicação em rede foi desenvolvida em **Python puro**, utilizando diretamente a API padrão de **sockets TCP**, sem uso de frameworks de rede, bibliotecas de RPC, middlewares de mensageria ou WebSockets.
+> [!NOTE]
+> Toda a comunicação em rede foi desenvolvida em **Python puro**, utilizando diretamente a API padrão de **sockets TCP**, sem uso de frameworks de rede, bibliotecas de RPC, middlewares de mensageria ou WebSockets.
 
 ---
 
@@ -100,6 +100,7 @@ TrabalhodeRedes/
 ├── rede_p2p.py         # Camada de rede P2P Full Mesh TCP, handshake OLA/OLA_OK e heartbeat
 ├── regras.py           # Regras do Uno (pode_jogar, cartas_validas, aplicar_efeito, proximo_jogador)
 ├── servidor_lobby.py   # Servidor TCP concorrente de lobby (registro, salas e descoberta de pares)
+├── tests/             # Testes automatizados de regras, protocolo, jogo e integração em rede
 └── README.md           # Documentação do projeto
 ```
 
