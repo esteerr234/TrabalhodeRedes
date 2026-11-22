@@ -396,17 +396,20 @@ class JogoP2P:
 
         # Ordenação causal: se a ação tem seq futuro (chegou antes da ação
         # anterior por outro socket TCP), guarda no buffer até self.seq avançar.
-        seq_msg = msg.get("seq")
-        if isinstance(seq_msg, int) and not isinstance(seq_msg, bool):
-            if seq_msg > self.seq + 1:
-                if seq_msg <= self.seq + len(self.ativos) + 4 and seq_msg not in self._acoes_futuras:
-                    self._acoes_futuras[seq_msg] = (remetente, msg)
-                    return
-                self._rejeitar(remetente, p.E_FORA_DE_TURNO, "número de sequência fora da janela", tipo)
+        try:
+            seq_msg = p.campo_int(msg, "seq")
+        except p.ErroProtocolo as e:
+            self._rejeitar(remetente, e.codigo, e.descricao, tipo)
+            return
+        if seq_msg > self.seq + 1:
+            if seq_msg <= self.seq + len(self.ativos) + 4 and seq_msg not in self._acoes_futuras:
+                self._acoes_futuras[seq_msg] = (remetente, msg)
                 return
-            if seq_msg <= self.seq:
-                self._rejeitar(remetente, p.E_FORA_DE_TURNO, "ação com sequência obsoleta", tipo)
-                return
+            self._rejeitar(remetente, p.E_FORA_DE_TURNO, "número de sequência fora da janela", tipo)
+            return
+        if seq_msg <= self.seq:
+            self._rejeitar(remetente, p.E_FORA_DE_TURNO, "ação com sequência obsoleta", tipo)
+            return
 
         # Validação independente de turno
         if remetente != self.jogador_atual_id:

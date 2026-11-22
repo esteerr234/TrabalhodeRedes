@@ -203,6 +203,10 @@ class Conexao:
                 raise ConexaoFechada()
             self._buffer += pedaco
         linha, self._buffer = self._buffer.split(b"\n", 1)
+        # O limite inclui o delimitador, como em codificar(). Verifica a
+        # linha completa antes de decodificar, preservando as próximas linhas.
+        if len(linha) + 1 > TAM_MAX_MENSAGEM:
+            raise ErroProtocolo(E_MENSAGEM_GRANDE, "linha excede o limite")
         return decodificar(linha.rstrip(b"\r"))
 
     def fechar(self):
