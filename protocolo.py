@@ -58,6 +58,22 @@ OLA_OK = "OLA_OK"    # handshake aceito
 TCHAU = "TCHAU"      # saída voluntária da partida
 TIPOS_RESERVADOS_P2P = {OLA, OLA_OK, TCHAU}
 
+# Tipos de mensagem: Par <-> Par (camada de jogo)
+COMMIT_SEMENTE = "COMMIT_SEMENTE"            # fase 1 do Commit-Reveal (SHA-256)
+REVELAR_SEMENTE = "REVELAR_SEMENTE"          # fase 2 do Commit-Reveal (semente)
+ACAO_JOGAR = "ACAO_JOGAR"                    # joga uma carta da mão
+ACAO_COMPRAR = "ACAO_COMPRAR"                # compra 1 carta (sem cartas válidas)
+ACAO_JOGAR_COMPRADA = "ACAO_JOGAR_COMPRADA"  # joga imediatamente a carta comprada
+ACAO_PASSAR = "ACAO_PASSAR"                  # passa a vez após comprar carta jogável
+TIPOS_JOGO_P2P = {
+    COMMIT_SEMENTE,
+    REVELAR_SEMENTE,
+    ACAO_JOGAR,
+    ACAO_COMPRAR,
+    ACAO_JOGAR_COMPRADA,
+    ACAO_PASSAR,
+}
+
 # --------------------------------------------------------------------------
 # Comuns aos dois canais
 # --------------------------------------------------------------------------
@@ -77,6 +93,10 @@ E_PARTIDA_EM_ANDAMENTO = "PARTIDA_EM_ANDAMENTO"
 E_NAO_AUTORIZADO = "NAO_AUTORIZADO"
 E_JOGADORES_INSUFICIENTES = "JOGADORES_INSUFICIENTES"
 E_NOME_EM_USO = "NOME_EM_USO"
+E_CHAVE_INVALIDA = "CHAVE_INVALIDA"
+E_FORA_DE_TURNO = "FORA_DE_TURNO"
+E_JOGADA_INVALIDA = "JOGADA_INVALIDA"
+E_SEMENTE_INVALIDA = "SEMENTE_INVALIDA"
 
 # Regras de tamanho de partida (min 3 e max 4)
 MIN_JOGADORES = 3
@@ -220,3 +240,12 @@ def campo_int(msg, nome, minimo=None, maximo=None):
     if (minimo is not None and valor < minimo) or (maximo is not None and valor > maximo):
         raise ErroProtocolo(E_CAMPO_INVALIDO, f"'{nome}' fora do intervalo [{minimo}, {maximo}]")
     return valor
+
+
+def campo_carta(msg, nome="carta"):
+    """Valida e converte o campo de carta ([cor, valor]) em tupla (cor, valor)."""
+    valor = msg.get(nome)
+    if (not isinstance(valor, (list, tuple)) or len(valor) != 2
+            or not isinstance(valor[0], str) or not isinstance(valor[1], str)):
+        raise ErroProtocolo(E_CAMPO_INVALIDO, f"'{nome}' deve ser uma lista [cor, valor]")
+    return (valor[0], valor[1])

@@ -14,8 +14,8 @@ valores = [
 
 # Criando o baralho
 
-def criar_baralho():
-
+def criar_baralho_canonico():
+    """Retorna as 104 cartas em ordem canônica determinística (sem embaralhar)."""
     baralho = []
 
     for cor in cores:
@@ -23,6 +23,19 @@ def criar_baralho():
             for copia in range(2):
                 baralho.append((cor, valor))
 
+    return baralho
+
+
+def embaralhar_deterministico(cartas, semente_int):
+    """Embaralha uma lista de cartas in-place com um gerador isolado."""
+    rng = random.Random(semente_int)
+    rng.shuffle(cartas)
+    return cartas
+
+
+def criar_baralho():
+
+    baralho = criar_baralho_canonico()
     random.shuffle(baralho)
 
     return baralho
