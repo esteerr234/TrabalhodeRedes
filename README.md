@@ -261,4 +261,4 @@ Para demonstrar os cenários nos terminais, siga as instruções de execução a
 | Cecília Teixeira Paranhos | 242027415 |
 | Jussara Barbosa Santiago | 242012056 |
 | Rafael Henrique Calado de Oliviera | 242035631 |
-| `[Nome do Integrante]` | `[Matrícula]` |
+| Nathalia Macena da Silva | 251027049 |
