@@ -7,8 +7,10 @@ Uso:
 
 import argparse
 import logging
-import select
+import queue
 import sys
+import threading
+
 
 import cliente_lobby as cl
 import jogo_p2p
@@ -17,18 +19,42 @@ import rede_p2p
 import regras
 
 
+_fila_teclado = queue.Queue()
+
+
+def _thread_teclado():
+    for linha in sys.stdin:            # bloqueia aqui, mas numa thread separada
+        _fila_teclado.put(linha.strip())
+    _fila_teclado.put(None)            # stdin fechado (Ctrl+D / Ctrl+Z)
+
+
+def iniciar_leitura_teclado():
+    threading.Thread(target=_thread_teclado, daemon=True, name="teclado").start()
+
+
+def ler(prompt="", timeout=None):
+    """Substitui input(). Com timeout, devolve None se nada foi digitado a tempo."""
+    if prompt:
+        print(prompt, end="", flush=True)
+    if timeout is not None:
+        try:
+            return _fila_teclado.get(timeout=timeout)
+        except queue.Empty:
+            return None
+    # Sem timeout: espera em fatias curtas para o Ctrl+C funcionar no Windows
+    while True:
+        try:
+            linha = _fila_teclado.get(timeout=0.5)
+        except queue.Empty:
+            continue
+        if linha is None:
+            raise EOFError("entrada encerrada")
+        return linha
+
+
 def _ler_linha_com_timeout(timeout=0.25):
-    """Lê uma linha de stdin sem bloquear indefinidamente (para reagir a eventos do lobby)."""
-    try:
-        pronto, _, _ = select.select([sys.stdin], [], [], timeout)
-        if pronto:
-            linha = sys.stdin.readline()
-            if linha == "":
-                return None
-            return linha.strip()
-    except (OSError, ValueError):
-        pass
-    return None
+    """Lê uma linha do teclado sem bloquear indefinidamente."""
+    return ler(timeout=timeout)
 
 
 def _mostrar_estado_mesa(jogo):
@@ -108,7 +134,7 @@ def executar_partida_p2p(meu_id, evento_inicio, rede):
 
                     print("\nCartas válidas na sua mão:", validas)
                     while jogo.estado == jogo_p2p.AGUARDANDO_ACAO and jogo.eh_minha_vez():
-                        escolha = input("Digite o número da carta que deseja jogar: ").strip()
+                        escolha = ler("Digite o número da carta que deseja jogar: ").strip()
                         jogo.processar_eventos_pendentes()
                         if jogo.estado == jogo_p2p.ENCERRADA or not jogo.eh_minha_vez():
                             break
@@ -129,7 +155,7 @@ def executar_partida_p2p(meu_id, evento_inicio, rede):
                 elif jogo.estado == jogo_p2p.AGUARDANDO_POS_COMPRA:
                     carta_comp = jogo.carta_comprada_pendente
                     while jogo.estado == jogo_p2p.AGUARDANDO_POS_COMPRA and jogo.eh_minha_vez():
-                        resp = input(
+                        resp = ler(
                             f"A carta comprada {carta_comp} pode ser jogada! Deseja jogar? (s/n): "
                         ).strip().lower()
                         jogo.processar_eventos_pendentes()
@@ -152,7 +178,7 @@ def executar_partida_p2p(meu_id, evento_inicio, rede):
                     ultimo_aguardado = atual
                 jogo.aguardar_evento(timeout=0.3)
 
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         print("\nSaindo da partida (enviando TCHAU aos pares)...")
     finally:
         print("\n========================================")
@@ -228,7 +254,7 @@ def menu_lobby(lobby, meu_id, rede):
         print("2 - Criar partida")
         print("3 - Entrar em partida")
         print("0 - Sair")
-        opcao = input("Escolha: ").strip()
+        opcao = ler("Escolha: ").strip()
 
         if opcao == "1":
             try:
@@ -246,8 +272,8 @@ def menu_lobby(lobby, meu_id, rede):
                 print(f"Erro ao listar partidas: {e}")
 
         elif opcao == "2":
-            nome_partida = input("Nome da partida: ").strip() or "Mesa Uno"
-            max_str = input("Máximo de jogadores (3 ou 4, padrão 4): ").strip() or "4"
+            nome_partida = ler("Nome da partida: ").strip() or "Mesa Uno"
+            max_str = ler("Máximo de jogadores (3 ou 4, padrão 4): ").strip() or "4"
             try:
                 max_j = int(max_str)
                 partida = lobby.criar_partida(nome_partida, max_jogadores=max_j)
@@ -258,7 +284,7 @@ def menu_lobby(lobby, meu_id, rede):
                 print(f"Erro ao criar partida: {e}")
 
         elif opcao == "3":
-            id_str = input("ID da partida: ").strip()
+            id_str =ler("ID da partida: ").strip()
             try:
                 id_partida = int(id_str)
                 partida = lobby.entrar_partida(id_partida)
@@ -323,7 +349,8 @@ def main():
         datefmt="%H:%M:%S",
     )
 
-    nome = (args.nome or input("Nome do jogador: ")).strip()
+    iniciar_leitura_teclado()
+    nome = (args.nome or ler("Nome do jogador: ")).strip()
     if not nome:
         print("Nome inválido.")
         sys.exit(1)
@@ -345,7 +372,7 @@ def main():
 
     try:
         menu_lobby(lobby, meu_id, rede)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         print("\nEncerrando cliente...")
     finally:
         rede.fechar()
