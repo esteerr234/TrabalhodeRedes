@@ -192,22 +192,36 @@ def executar_partida_p2p(meu_id, evento_inicio, rede):
         rede.desconectar_partida()
 
 
+def _ocupacao_sala(partida):
+    ocupadas = partida["num_jogadores"]
+    capacidade = partida["max_jogadores"]
+    vagas = "[X]" * ocupadas + "[ ]" * (capacidade - ocupadas)
+    return f"{vagas}  {ocupadas}/{capacidade} jogadores"
+
+
 def aguardar_na_sala(lobby, meu_id, partida):
     """
     Aguarda na sala do lobby até PARTIDA_INICIADA, saída voluntária ou queda do lobby.
     Retorna o dict do evento PARTIDA_INICIADA ou None se saiu da sala.
     """
     def _mostrar_sala(pt):
-        nomes = ", ".join(j["nome"] for j in pt["jogadores"])
         sou_criador = pt["criador"] == meu_id
-        print(
-            f"\n[SALA #{pt['id_partida']} '{pt['nome']}'] "
-            f"{pt['num_jogadores']}/{pt['max_jogadores']} jogadores: {nomes}"
-        )
+        print("\n+---------- SALA DE ESPERA ----------+")
+        print(f"  #{pt['id_partida']}  {pt['nome']}")
+        print(f"  {_ocupacao_sala(pt)}")
+        for jogador in pt["jogadores"]:
+            pid = jogador["id_jogador"]
+            criador = " [responsável]" if pid == pt["criador"] else ""
+            local = " (você)" if pid == meu_id else ""
+            print(f"  - {jogador['nome']}{local}{criador}")
+        print("+------------------------------------+")
+
+        if pt["num_jogadores"] < p.MIN_JOGADORES:
+            print(f"  São necessários {p.MIN_JOGADORES} jogadores para começar.")
         if sou_criador:
-            print("Você é o criador. Digite 'iniciar' (mín. 3 jogadores) ou 'sair':")
+            print("  Comandos: [iniciar]  [sair]")
         else:
-            print("Aguardando o criador iniciar a partida (digite 'sair' para sair da sala)...")
+            print("  Aguardando o responsável iniciar. Comando: [sair]")
 
     _mostrar_sala(partida)
 
@@ -249,12 +263,19 @@ def aguardar_na_sala(lobby, meu_id, partida):
 def menu_lobby(lobby, meu_id, rede):
     """Menu interativo do lobby para listar, criar e entrar em partidas."""
     while lobby.conectado:
-        print("\n=== MENU DO LOBBY ===")
-        print("1 - Listar partidas")
-        print("2 - Criar partida")
-        print("3 - Entrar em partida")
-        print("0 - Sair")
-        opcao = ler("Escolha: ").strip()
+        print(
+            "\n+------------------------------------+\n"
+            "|   .----.                           |\n"
+            "|   | +2 |   U N O   P 2 P           |\n"
+            "|   '----'   Lobby                   |\n"
+            "+------------------------------------+\n"
+            "|   [1] Listar partidas              |\n"
+            "|   [2] Criar partida                |\n"
+            "|   [3] Entrar em partida            |\n"
+            "|   [0] Sair                         |\n"
+            "+------------------------------------+"
+        )
+        opcao = ler("  Escolha: ").strip()
 
         if opcao == "1":
             try:
@@ -262,12 +283,11 @@ def menu_lobby(lobby, meu_id, rede):
                 if not partidas:
                     print("\nNenhuma partida aguardando jogadores.")
                 else:
-                    print("\nPartidas disponíveis:")
+                    print("\n+------- PARTIDAS DISPONÍVEIS -------+")
                     for pt in partidas:
-                        print(
-                            f"  #{pt['id_partida']} - {pt['nome']} "
-                            f"({pt['num_jogadores']}/{pt['max_jogadores']}) [{pt['estado']}]"
-                        )
+                        print(f"  #{pt['id_partida']}  {pt['nome']}")
+                        print(f"       {_ocupacao_sala(pt)}  [{pt['estado']}]")
+                    print("+------------------------------------+")
             except cl.ErroLobby as e:
                 print(f"Erro ao listar partidas: {e}")
 
