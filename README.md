@@ -100,7 +100,9 @@ TrabalhodeRedes/
 ├── rede_p2p.py         # Camada de rede P2P Full Mesh TCP, handshake OLA/OLA_OK e heartbeat
 ├── regras.py           # Regras do Uno (pode_jogar, cartas_validas, aplicar_efeito, proximo_jogador)
 ├── servidor_lobby.py   # Servidor TCP concorrente de lobby (registro, salas e descoberta de pares)
-├── tests/             # Testes automatizados de regras, protocolo, jogo e integração em rede
+├── tests/              # Testes automatizados de regras, protocolo, jogo e integração em rede
+├── Dockerfile          # Imagem única (Lobby + Cliente P2P) compatível com Podman e Docker
+├── .dockerignore       # Exclusões de contexto para builds limpos de contêiner
 └── README.md           # Documentação do projeto
 ```
 
@@ -193,6 +195,104 @@ Opções disponíveis em `main.py`:
   - Quando for sua vez e houver cartas válidas: digite o **número da carta** exibido na lista da sua mão (`1` a `N`).
   - Quando não houver cartas válidas: a compra de 1 carta é automática; se a carta comprada for jogável, responda `s` para jogar imediatamente ou `n` para passar a vez.
   - `Ctrl+C` — Envia `TCHAU` aos pares e encerra sua participação na partida.
+
+### 5. Execução via Contêiner (Podman / Docker)
+
+O projeto possui uma **imagem única** (`Dockerfile`, compatível com **Podman rootless** e **Docker**) que executa o servidor de lobby por padrão e pode executar clientes jogadores sobrescrevendo o comando para `python3 main.py ...`. Todos os comandos abaixo usam `podman`, mas funcionam identicamente substituindo `podman` por `docker`.
+
+#### a) Obter ou construir a imagem
+
+Usando a imagem publicada no Docker Hub:
+
+```bash
+podman pull docker.io/iagobgc/unb-redes-uno-p2p:latest
+```
+
+Ou construindo localmente a partir da raiz do repositório:
+
+```bash
+podman build -t unb-redes-uno-p2p:local .
+```
+
+*(Nos comandos abaixo, substitua `unb-redes-uno-p2p:local` por `docker.io/iagobgc/unb-redes-uno-p2p:latest` caso use a imagem publicada.)*
+
+#### b) Execução local na mesma máquina (rede dedicada `uno-net`)
+
+Crie uma rede bridge dedicada para que os contêineres resolvam nomes por DNS interno (`lobby`, `ana`, `bruno`, etc.):
+
+```bash
+podman network create uno-net
+```
+
+Inicie o contêiner do **Servidor de Lobby** (Terminal 1):
+
+```bash
+podman run --rm --name lobby --network uno-net -p 5000:5000 unb-redes-uno-p2p:local
+```
+
+Inicie **3 ou 4 jogadores interativos** em terminais separados (`-it --rm`):
+
+```bash
+# Terminal 2 — Jogador 1
+podman run -it --rm --name ana --network uno-net unb-redes-uno-p2p:local \
+  python3 main.py --nome Ana --lobby-host lobby --lobby-porta 5000 --porta-p2p 6001
+
+# Terminal 3 — Jogador 2
+podman run -it --rm --name bruno --network uno-net unb-redes-uno-p2p:local \
+  python3 main.py --nome Bruno --lobby-host lobby --lobby-porta 5000 --porta-p2p 6002
+
+# Terminal 4 — Jogador 3
+podman run -it --rm --name carla --network uno-net unb-redes-uno-p2p:local \
+  python3 main.py --nome Carla --lobby-host lobby --lobby-porta 5000 --porta-p2p 6003
+
+# Terminal 5 — Jogador 4 (opcional)
+podman run -it --rm --name diego --network uno-net unb-redes-uno-p2p:local \
+  python3 main.py --nome Diego --lobby-host lobby --lobby-porta 5000 --porta-p2p 6004
+```
+
+#### c) Execução entre máquinas diferentes na mesma LAN ou VPN (Tailscale)
+
+Quando os jogadores rodam em máquinas distintas (rede local ou VPN Tailscale), cada par precisa anunciar um IP acessível pelos demais (`--host-p2p <IP_REAL>`):
+
+- **Opção recomendada no Linux (`--network host`):** o contêiner compartilha diretamente as interfaces de rede do host (LAN e `tailscale0`), sem NAT extra:
+
+  ```bash
+  # Máquina do Lobby (ex.: 192.168.0.10 ou IP Tailscale 100.x.y.z)
+  podman run --rm --name lobby --network host unb-redes-uno-p2p:local
+
+  # Máquina de cada Jogador (substitua pelos IPs reais na LAN ou Tailscale)
+  podman run -it --rm --name ana --network host unb-redes-uno-p2p:local \
+    python3 main.py --nome Ana --lobby-host <IP_LOBBY> --lobby-porta 5000 --host-p2p <IP_DESTA_MAQUINA> --porta-p2p 6001
+  ```
+
+- **Alternativa com mapeamento de portas (`-p`, útil no macOS/Windows ou quando não se usa `--network host`):**
+
+  ```bash
+  # Máquina do Lobby
+  podman run --rm --name lobby -p 5000:5000 unb-redes-uno-p2p:local
+
+  # Máquina de cada Jogador (mapeia a porta P2P e anuncia o IP real do host)
+  podman run -it --rm --name ana -p 6001:6001 unb-redes-uno-p2p:local \
+    python3 main.py --nome Ana --lobby-host <IP_LOBBY> --lobby-porta 5000 --host-p2p <IP_DESTA_MAQUINA> --porta-p2p 6001
+  ```
+
+#### d) Simulação dos cenários de falha em contêiner
+
+Com a partida já iniciada e em andamento:
+
+```bash
+# Cenário 3: derruba o servidor de lobby — a partida P2P continua normalmente até o fim
+podman stop lobby
+
+# Cenário 2: simula queda abrupta de um par (sem TCHAU) — demais pares detectam e continuam
+podman kill bruno
+```
+
+Ao encerrar os testes locais, remova a rede dedicada se desejar:
+
+```bash
+podman network rm uno-net
+```
 
 ---
 

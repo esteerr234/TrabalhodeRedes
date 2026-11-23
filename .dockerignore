@@ -1,0 +1,30 @@
+# Controle de versão
+.git
+.gitignore
+
+# Cache e artefatos Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Documentação e testes (não necessários na imagem de execução)
+README.md
+*.md
+tests/
+
+# Arquivos de contêiner
+Dockerfile
+.dockerignore
+.containerignore
+
+# IDEs, editores e arquivos temporários
+.vscode/
+.idea/
+*.swp
+*.swo
+*.log
+*.tmp
+.DS_Store
